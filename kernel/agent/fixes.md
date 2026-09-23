@@ -54,6 +54,9 @@ From commit-message.json, extract:
 Different subsystems have different preferences for Fixes: tags. Before
 searching for a missing tag, determine if we should check at all.
 
+**BPF CI: never report missing Fixes: tags.** If `existing_fixes_tag` is
+false → EXIT. Only existing Fixes: tags are validated (PHASE 5).
+
 ### Step 1: Classify the commit
 
 First, determine if this is a bug fix at all. Look for indicators in the
@@ -119,10 +122,8 @@ If files span multiple subsystems, use the subsystem of the primary change
 |-----------|--------|
 | Not a bug fix | EXIT |
 | Minor bug (any subsystem) | EXIT |
-| **networking** subsystem, no existing Fixes: tag | EXIT |
+| No existing Fixes: tag (any subsystem, BPF CI) | EXIT |
 | Has existing Fixes: tag (any subsystem) | → PHASE 5 (validate existing tag) |
-| Major bug in **bpf** subsystem, no existing tag | → PHASE 3 |
-| Major bug in other subsystem, no existing tag | → PHASE 3 |
 
 **Note on networking**: The networking subsystem does not require Fixes: tags,
 so we never flag missing tags. However, if a networking commit already has a
@@ -236,6 +237,8 @@ For each candidate commit found:
 - Only refactored existing code
 - Unrelated to the bug
 - Postdates the fix commit
+- Is inside the series range, or is a BPF CI artifact ("adding ci files",
+  "Dummy commit"): these are never valid Fixes: targets
 
 ---
 
@@ -256,6 +259,12 @@ Verify:
 | Fails | No | No issue found, candidate was not a match |
 | Succeeds | Yes | Existing tag is correct, no issue |
 | Succeeds | No | Report missing-fixes-tag in PHASE 6 |
+
+**BPF CI:** history in this workspace is truncated: it starts at a CI commit
+("adding ci files") that appears to create every file. When reporting a
+wrong-fixes-tag, name a replacement only if you verified that it is an
+upstream commit predating the series. Otherwise report the problem with the
+existing tag without proposing a replacement.
 
 ---
 
